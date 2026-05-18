@@ -1,0 +1,57 @@
+# Brand profile.
+# Copy this file to `brand/brand.yaml` and fill it in. The /ads-launch,
+# /ads-optimize, /ads-report, and /ads-pause skills read it to pre-fill
+# defaults, enforce naming, and ground recommendations.
+#
+# This file is structured data. Free-form tone, do/don't, and example copy
+# live in `brand/voice.md` next to this file.
+
+brand:
+  name: "Acme Co"
+  website: "https://acme.example.com"
+  # Short pitch used as fallback primary_text when copy.yaml omits it.
+  one_liner: "The fastest way to do the thing."
+
+account:
+  # Mirror the account id from .env so skills can read it without env access.
+  # The MCP server still resolves the runtime account from META_AD_ACCOUNT_ID.
+  id: "act_XXXXXXXXXXXXXXX"
+  currency: "USD"
+  market: "US"
+  timezone: "America/Los_Angeles"
+
+placements:
+  # Page that owns the post and (optionally) the Instagram actor.
+  page_id: "XXXXXXXXXXXXXXX"
+  instagram_actor_id: "XXXXXXXXXXXXXXX"
+
+defaults:
+  # Pre-fill these in /ads-launch when the user doesn't override.
+  objective: "OUTCOME_TRAFFIC"
+  audience:
+    countries: ["US"]
+    age_min: 18
+    age_max: 65
+    genders: ["all"]   # "all" | "male" | "female"
+    interests_keywords: []   # e.g. ["productivity", "remote work"]
+  cta_type: "LEARN_MORE"     # LEARN_MORE | SIGN_UP | DOWNLOAD | SHOP_NOW | ...
+  daily_budget_minor: 5000   # in minor units (cents). 5000 = $50/day.
+  billing_event: "IMPRESSIONS"
+
+naming_convention:
+  # Used by /ads-launch to generate names and by /ads-report and /ads-pause
+  # to parse names back into facets. Tokens: {date} {objective} {audience}
+  # {variant} {brand}.
+  campaign: "{brand} | {objective} | {date}"
+  adset: "{audience}"
+  ad: "{variant}"
+  date_format: "YYYY-MM-DD"
+
+utm:
+  # Appended to creative link URLs if the link doesn't already carry UTM params.
+  source: "meta"
+  medium: "paid_social"
+  # Optional templates resolved against campaign/adset/ad names. Same tokens
+  # as naming_convention.
+  campaign: "{date}_{objective}"
+  content: "{variant}"

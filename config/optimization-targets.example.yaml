@@ -1,0 +1,69 @@
+# Meta Ads optimization targets template.
+# Copy this file to `config/optimization-targets.yaml` and tune the values
+# for your own account. The /ads-optimize, /ads-pause, and /ads-report
+# skills read it to decide when to flag, pause, refresh, or scale ads.
+
+account:
+  id: act_XXXXXXXXXXXXXXX
+  currency: USD
+  market: US
+  page_id: "XXXXXXXXXXXXXXX"
+  primary_objective: OUTCOME_TRAFFIC
+
+budget:
+  current_daily: 20
+  scale_threshold: 50   # don't split into multiple adsets below this
+  scale_step_pct: 20    # bump by this much when a winner is confirmed
+
+learning_phase:
+  # Meta's auction is volatile until each ad gets ~50 conversions / 1000+
+  # impressions. Don't act on data inside this window.
+  min_impressions_before_judging: 1000
+  min_days_before_judging: 4
+  rule: "Do not pause or scale based on metrics inside this window."
+
+thresholds:
+  # CTR (click-through rate)
+  ctr_kill_pct: 0.8         # below this after min_impressions -> pause
+  ctr_winner_pct: 1.5       # at or above this for 5+ days -> candidate to scale
+
+  # CPC (cost per click) — in account currency
+  cpc_healthy_max: 1.00
+  cpc_winner_max: 0.80      # combined with ctr_winner_pct = scale signal
+  cpc_investigate_landing_page: 1.50  # above this, problem is LP not creative
+
+  # Frequency (avg views per unique user, weekly)
+  frequency_refresh: 2.5    # at this point, swap in fresh creative variants
+  frequency_saturated: 3.0  # at this point, audience exhausted — pause or expand
+
+  # CPM trend
+  cpm_audience_tired_wow_pct: 20  # +20% w/w CPM = audience fatigue signal
+
+  # Delivery
+  spend_delivery_min_pct: 80  # if adset spends < 80% of budget, optimization is stuck
+
+# When a creative holds (CTR >= ctr_winner_pct) AND (CPC <= cpc_winner_max)
+# for >= scale_winner_consecutive_days, increase campaign daily_budget by
+# scale_step_pct. Never step by more than this — Meta's learning phase
+# resets on big budget changes.
+scale_winner_consecutive_days: 5
+
+automation:
+  # What Claude should do automatically vs flag for human decision
+  auto_pause: false        # never auto-pause; recovering ads die from this
+  auto_scale: false        # require human sign-off on budget changes
+  daily_report: true       # /ads-report runs each morning
+  weekly_optimize: true    # /ads-optimize runs Monday
+
+# Decision shortcuts the skills should use
+playbook:
+  - if: "CTR < ctr_kill_pct AND impressions >= min_impressions_before_judging"
+    action: "Recommend pause. Show the user the data; don't auto-pause."
+  - if: "frequency >= frequency_refresh"
+    action: "Recommend swapping in 2-3 new creative variants under same adset."
+  - if: "CTR >= ctr_winner_pct AND CPC <= cpc_winner_max AND days_running >= scale_winner_consecutive_days"
+    action: "Recommend bumping campaign daily_budget by scale_step_pct."
+  - if: "CTR healthy AND CPC >= cpc_investigate_landing_page"
+    action: "Flag landing-page issue, not creative issue. Check mobile load time."
+  - if: "spend < (budget * spend_delivery_min_pct / 100)"
+    action: "Adset stuck in learning or audience too narrow. Review targeting."

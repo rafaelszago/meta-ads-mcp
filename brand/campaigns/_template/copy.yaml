@@ -1,0 +1,21 @@
+# Creative copy + asset bindings for this campaign.
+# Each variant becomes one ad inside the campaign's single ad set.
+# Image filenames are resolved against brand/manifest.json — drop the files
+# in brand/assets/images/ and run sync_brand_assets first.
+
+link: "https://acme.example.com/landing"
+
+variants:
+  - id: "v1"
+    primary_text: "Short hook that opens with the user's problem."
+    headline: "One clear promise"
+    description: "Optional sub-headline."
+    cta_type: "LEARN_MORE"
+    image_filename: "hero-v1.jpg"
+
+  - id: "v2"
+    primary_text: "Different angle. Maybe a testimonial."
+    headline: "Different headline"
+    description: ""
+    cta_type: "LEARN_MORE"
+    image_filename: "testimonial-v2.jpg"

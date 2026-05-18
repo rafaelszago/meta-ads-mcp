@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "meta-ads": {
+      "type": "stdio",
+      "command": "bun",
+      "args": ["run", "src/server.ts"]
+    }
+  }
+}
