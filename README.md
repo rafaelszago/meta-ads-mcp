@@ -2,6 +2,8 @@
 
 A local [Model Context Protocol](https://modelcontextprotocol.io) server for managing a Meta Ads account from [Claude Code](https://claude.com/claude-code) — plus four project-scoped skills that orchestrate common workflows (launch, report, optimize, pause) and a `brand/` directory that grounds every skill in your brand voice, defaults, and assets.
 
+> Not affiliated with, endorsed by, or sponsored by Meta Platforms, Inc. "Meta", "Facebook", and "Instagram" are trademarks of Meta Platforms, Inc. This project wraps the public Meta Marketing API and is provided as-is under the MIT License.
+
 ## Why this exists
 
 Meta ships an official MCP at `mcp.facebook.com/ads`, but the rollout is phased and many ad accounts (and many Claude clients' OAuth callbacks) are not yet on the allowlist. This server wraps the Meta Marketing API directly using a System User access token, so any account with API access can drive its ads from Claude today. When Meta enables your account on the official MCP, swap by editing `.mcp.json` — see [Swap to the official MCP](#swap-to-the-official-mcp).
@@ -82,4 +84,4 @@ Stack: Bun + TypeScript (strict, ESNext, bundler resolution) + Biome + Zod + `@m
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE) if present, otherwise treat as MIT.
+MIT — see [`LICENSE`](LICENSE).

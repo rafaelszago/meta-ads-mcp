@@ -6,3 +6,5 @@ dist/
 *.log
 bun.lock
 config/optimization-targets.yaml
+.idea/
+.vscode/
