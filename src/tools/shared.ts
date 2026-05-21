@@ -29,6 +29,8 @@ export function asErrorResult(err: unknown): {
   isError: true
 } {
   if (err instanceof MetaApiError) {
+    const inner = (err.raw as { error?: { error_user_title?: string; error_user_msg?: string } })
+      ?.error
     return {
       content: [
         {
@@ -39,6 +41,8 @@ export function asErrorResult(err: unknown): {
               status: err.status,
               code: err.code,
               subcode: err.subcode,
+              error_user_title: inner?.error_user_title ?? null,
+              error_user_msg: inner?.error_user_msg ?? null,
               fbtrace_id: err.fbtrace,
             },
             null,

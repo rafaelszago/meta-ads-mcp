@@ -45,6 +45,7 @@ Create a new campaign.
   - `lifetime_budget?: number` (minor units)
   - `bid_strategy?: "LOWEST_COST_WITHOUT_CAP" | "LOWEST_COST_WITH_BID_CAP" | "COST_CAP" | "LOWEST_COST_WITH_MIN_ROAS"`
   - `buying_type?: "AUCTION" | "RESERVED"`
+  - `is_adset_budget_sharing_enabled?: boolean` — required by Meta on ABO campaigns. Defaults to `false` when no campaign-level budget is provided; omitted when CBO is in use.
 - **Returns:** `{ id }`. Soft warning string in the response if `status` was `ACTIVE`.
 - **Example:** `"create a traffic campaign called Summer Launch with a $50/day budget, paused"` → `create_campaign({ name: "Summer Launch", objective: "OUTCOME_TRAFFIC", daily_budget: 5000 })`.
 
