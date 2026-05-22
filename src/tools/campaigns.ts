@@ -95,6 +95,12 @@ const CreateCampaignInput = AccountInput.extend({
     ])
     .optional(),
   buying_type: z.enum(["AUCTION", "RESERVED"]).optional(),
+  is_adset_budget_sharing_enabled: z
+    .boolean()
+    .optional()
+    .describe(
+      "Required by Meta when not using campaign-level CBO. Defaults to false (ABO — each ad set holds its own budget). Set true to let ad sets share 20% of the campaign budget.",
+    ),
 })
 
 const UpdateCampaignInput = z.object({
@@ -135,6 +141,12 @@ campaignTools.push(
         if (input.lifetime_budget !== undefined) body.lifetime_budget = input.lifetime_budget
         if (input.bid_strategy) body.bid_strategy = input.bid_strategy
         if (input.buying_type) body.buying_type = input.buying_type
+        const usingCbo = input.daily_budget !== undefined || input.lifetime_budget !== undefined
+        if (input.is_adset_budget_sharing_enabled !== undefined) {
+          body.is_adset_budget_sharing_enabled = input.is_adset_budget_sharing_enabled
+        } else if (!usingCbo) {
+          body.is_adset_budget_sharing_enabled = false
+        }
         const result = await metaPost(`${account}/campaigns`, body)
         return asTextResult(result, activeWarning(input.status))
       } catch (err) {
