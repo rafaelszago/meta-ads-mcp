@@ -20,7 +20,8 @@ brand/
     │   └── copy.yaml
     └── <slug>/             # one folder per campaign brief
         ├── brief.md
-        └── copy.yaml
+        ├── copy.yaml
+        └── ids.yaml        # auto-managed; written by /ads-campaign and /ads-launch
 ```
 
 The `.example` files are committed so anyone cloning the repo can scaffold their own:
@@ -196,6 +197,45 @@ variants:
 
 `image_filename` is resolved against `manifest.json`. If the file is in `brand/assets/images/` but not yet in the manifest, `/ads-launch` calls `sync_brand_assets` first, then re-reads the manifest. If the file is missing from disk, `/ads-launch` stops.
 
+### `ids.yaml`
+
+Auto-managed by `/ads-campaign` and `/ads-launch`. It's the single source of truth for which Meta entities (campaign, ad sets, ads) belong to a given slug, so downstream skills can look them up by slug instead of parsing names.
+
+```yaml
+# Auto-managed by /ads-campaign and /ads-launch. Safe to read; don't hand-edit
+# unless you know what you're doing — the skills append to this file.
+slug: "summer-promo"
+account_id: "act_1234567890"
+campaign:
+  id: "23851234567890123"
+  name: "Acme | OUTCOME_SALES | 2026-06-01"
+  objective: "OUTCOME_SALES"
+  created_at: "2026-06-01T08:00:14Z"
+adsets:
+  - id: "23851234567890456"
+    name: "site_visitors_30d"
+    created_at: "2026-06-01T08:00:18Z"
+ads:
+  - id: "23851234567890789"
+    name: "v1"
+    creative_id: "23851234567899999"
+    variant_id: "v1"
+    created_at: "2026-06-01T08:00:22Z"
+```
+
+Design choices, explained:
+
+- **Slug-scoped.** One `ids.yaml` per `brand/campaigns/<slug>/`. The slug is the user-facing identity for a hypothesis; the IDs are the Meta-side bindings.
+- **One account per slug.** `account_id` is recorded so the skills can detect drift. If `brand.yaml` `account.id` changes, `/ads-campaign` and `/ads-launch` refuse to write to a slug bound to a different account — pick a new slug or switch accounts.
+- **IDs are strings.** Meta entity IDs exceed `Number.MAX_SAFE_INTEGER`, so they're always quoted in YAML.
+- **Append-only.** Existing `adsets[]` and `ads[]` entries are never reordered or rewritten — only appended to. This keeps the file diff-friendly and audit-friendly.
+- **Created on demand, not by `_template`.** The file is *not* shipped in `brand/campaigns/_template/`; it's created on the first successful campaign creation. An empty `ids.yaml` would be ambiguous (does it mean "no campaign yet" or "I tried and failed"?).
+- **Skills coexist via the file:**
+  - `/ads-campaign <slug>` creates `campaign` + initial `adsets[]`, leaves `ads: []`.
+  - `/ads-launch <slug>` either creates the file from scratch (one-shot mode) or reads it and appends new ads (after a scaffold). If it needs to add an ad set under an existing campaign, it appends to `adsets[]` too.
+  - Read-only skills (`/ads-report`, `/ads-optimize`, `/ads-pause`) can use `ids.yaml` to filter by slug instead of parsing campaign names.
+- **Failure handling.** If a skill hits a 404 on an ID stored here (entity deleted out-of-band in Ads Manager), it warns the user — it does NOT silently rewrite the file. Stale entries are the user's call to clean up.
+
 ### Worked example: `summer-promo`
 
 **1. Scaffold the brief.**
@@ -266,7 +306,20 @@ The skill:
 3. Looks up `summer-hero.jpg` and `summer-testimonial.jpg` in `manifest.json`. Both missing → calls `sync_brand_assets` → re-reads manifest.
 4. Generates names: campaign = `Acme Co | OUTCOME_SALES | 2026-06-01`, ad set = `site_visitors_30d`, ads = `v1`, `v2`.
 5. Creates campaign, ad set, 2 creatives, 2 ads — all PAUSED.
-6. Prints the IDs and Ads Manager URL.
+6. Writes `brand/campaigns/summer-promo/ids.yaml` with the campaign id, the ad set id, and both ad ids (with their `creative_id` and `variant_id` bindings).
+7. Prints the IDs and Ads Manager URL.
+
+**Alternative: scaffold first, attach creatives later.**
+
+If you want the campaign live (PAUSED) before the creatives are final — e.g. you have the audience and budget locked in but the copy/imagery is still in review — split the launch:
+
+```
+/ads-campaign summer-promo    # creates campaign + adset PAUSED, writes ids.yaml
+# ...later, once copy.yaml is filled in...
+/ads-launch summer-promo      # reads ids.yaml, reuses campaign+adset, appends ads
+```
+
+The second run reads `ids.yaml`, sees the campaign already exists, and only creates the new creatives + ads — appending each to `ids.yaml` `ads[]`.
 
 ## What to commit
 

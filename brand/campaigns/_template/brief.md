@@ -1,8 +1,17 @@
 # Campaign brief — `<slug>`
 
 Copy this `_template` folder to `brand/campaigns/<your-slug>/` and fill it in.
-Run `/ads-launch <your-slug>` to launch from this brief. Everything will be
-created PAUSED.
+Two paths from here:
+
+- **Scaffold then iterate:** `/ads-campaign <your-slug>` creates the campaign +
+  ad set(s) PAUSED and saves the IDs to `ids.yaml`. Later, fill in `copy.yaml`
+  and run `/ads-launch <your-slug>` to attach creatives + ads to the same
+  campaign.
+- **One-shot:** `/ads-launch <your-slug>` does everything (campaign → ad set →
+  creatives → ads) and writes `ids.yaml` itself.
+
+Either way, everything is created PAUSED and the resulting IDs land in
+`ids.yaml` for downstream skills to read.
 
 ## Objective
 

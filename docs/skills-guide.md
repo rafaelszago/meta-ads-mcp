@@ -1,14 +1,49 @@
 # Skills guide
 
-Four project-scoped skills live under `.claude/skills/` and orchestrate the MCP tools into common workflows. Invoke a skill with `/<skill-name>` in Claude Code, or just describe what you want — Claude will pick the matching skill from its `description` frontmatter.
+Five project-scoped skills live under `.claude/skills/` and orchestrate the MCP tools into common workflows. Invoke a skill with `/<skill-name>` in Claude Code, or just describe what you want — Claude will pick the matching skill from its `description` frontmatter.
 
 Each skill is grounded in `brand/brand.yaml` and `brand/voice.md` when present (see [`brand-workflow.md`](./brand-workflow.md)).
 
 ---
 
+## `/ads-campaign` — Scaffold a campaign + ad set(s)
+
+**What it does.** Creates the campaign shell — campaign + one or more ad sets, PAUSED — and writes the resulting IDs to `brand/campaigns/<slug>/ids.yaml`. Does **not** create creatives or ads. Use it when you want to set up the campaign structure first and iterate on creatives separately.
+
+**When to use it.** "scaffold a campaign", "create a campaign shell", "set up the campaign without ads yet", `/ads-campaign <slug>`. Pair with `/ads-launch <slug>` to attach creatives + ads later — the launch skill will reuse the IDs in `ids.yaml`.
+
+**Inputs it gathers.** Same defaults as `/ads-launch`: reads `brand/brand.yaml` and `brand/campaigns/<slug>/brief.md` first, then asks for anything missing (objective, daily budget in minor units, audience overrides, schedule, number of ad sets, `promoted_object` for `OUTCOME_SALES`/`OUTCOME_LEADS`). Skips `copy.yaml` — not needed at this stage.
+
+**What it doesn't do.**
+
+- Does not create creatives or ads. Use `/ads-launch <slug>` for that.
+- Does not flip anything to `ACTIVE`. Everything is PAUSED.
+- Does not create a second campaign for a slug that's already scaffolded. If `ids.yaml` already exists, it offers to add a new ad set under the existing campaign instead.
+- Refuses to mix accounts under one slug — if `ids.yaml` `account_id` differs from the current `brand.yaml`, the skill aborts.
+
+**The `ids.yaml` contract.** See [`brand-workflow.md`](./brand-workflow.md#idsyaml) for the schema. The short version: `ids.yaml` is the single source of truth for "what Meta entities belong to this slug." Both `/ads-campaign` and `/ads-launch` write to it. Downstream skills (`/ads-report`, `/ads-optimize`, `/ads-pause`) can read it to look up entities by slug instead of parsing names.
+
+**Example session.**
+
+```
+You:        /ads-campaign summer-promo
+Claude:     Loaded brand.yaml + brief.md.
+            Objective: OUTCOME_SALES, audience: site_visitors_30d,
+            budget: $80/day, schedule: 2026-06-01 → 2026-06-08.
+            How many ad sets? (default: 1)
+You:        1
+Claude:     [creates campaign + 1 adset PAUSED]
+            Campaign 23842... · Adset 23842...
+            Saved to brand/campaigns/summer-promo/ids.yaml
+            Ads Manager: https://business.facebook.com/adsmanager/...
+            Next: fill in copy.yaml and run /ads-launch summer-promo.
+```
+
+---
+
 ## `/ads-launch` — Guided campaign launch
 
-**What it does.** Walks you through creating a complete ad — campaign → ad set → creative → ad — in one flow. Everything is created `PAUSED`. You flip status to `ACTIVE` in Ads Manager (or via `/ads-pause` resume) once you've reviewed.
+**What it does.** Walks you through creating a complete ad — campaign → ad set → creative → ad — in one flow. Everything is created `PAUSED`. You flip status to `ACTIVE` in Ads Manager (or via `/ads-pause` resume) once you've reviewed. If `brand/campaigns/<slug>/ids.yaml` exists (because `/ads-campaign` already scaffolded the campaign), the launch reuses the saved `campaign_id` + ad set and only creates the new creatives + ads. Either way, IDs are written to `ids.yaml` when invoked with a slug.
 
 **When to use it.** "launch a campaign", "create a new ad", "set up a Meta Ads campaign", `/ads-launch`, or `/ads-launch <slug>` to launch from a saved brief.
 
@@ -207,7 +242,7 @@ A typical weekly cadence:
 | Monday morning | `/ads-report` | Snapshot last week. Spot anomalies. |
 | Monday | `/ads-optimize` | Get recommendations grounded in 14 days of data. |
 | Monday/Tuesday | `/ads-pause` | Act on the losers from the optimize output. |
-| Tuesday/Wednesday | `/ads-launch` (or `/ads-launch <slug>` from a brief) | Replace what you paused; test the next hypothesis. |
+| Tuesday/Wednesday | `/ads-campaign <slug>` → `/ads-launch <slug>` | Scaffold the next hypothesis, then attach creatives. (Or skip straight to `/ads-launch <slug>` if you don't need the scaffold step.) |
 | Daily | `/ads-report` (scheduled) | Lightweight check-in. Post to Discord with `DISCORD_WEBHOOK_URL` set. |
 
 Use [`/schedule`](https://docs.claude.com/en/docs/claude-code/slash-commands) to run `/ads-report` automatically each morning.
