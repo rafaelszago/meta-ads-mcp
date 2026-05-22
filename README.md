@@ -23,7 +23,7 @@ Everything end-user lives under [`docs/`](docs/):
 
 - [`getting-started.md`](docs/getting-started.md) — token, env, install, first launch.
 - [`tools-reference.md`](docs/tools-reference.md) — all 24 MCP tools with inputs, returns, examples.
-- [`skills-guide.md`](docs/skills-guide.md) — `/ads-launch`, `/ads-report`, `/ads-optimize`, `/ads-pause`, and the weekly cadence.
+- [`skills-guide.md`](docs/skills-guide.md) — `/ads-campaign`, `/ads-launch`, `/ads-report`, `/ads-optimize`, `/ads-pause`, and the weekly cadence.
 - [`brand-workflow.md`](docs/brand-workflow.md) — `brand/brand.yaml` schema, `voice.md`, the asset manifest, campaign briefs.
 - [`troubleshooting.md`](docs/troubleshooting.md) — error codes, recovery, debugging.
 - [`flip-fb-app-to-live.md`](docs/flip-fb-app-to-live.md) — required before `create_creative` / `create_ad` work.
@@ -31,8 +31,9 @@ Everything end-user lives under [`docs/`](docs/):
 ## What's in the box
 
 - **24 MCP tools** across Campaigns, Ad Sets, Ads, Creatives, Insights, and Brand. Full reference: [`docs/tools-reference.md`](docs/tools-reference.md).
-- **4 project-scoped skills** under `.claude/skills/`:
-  - `/ads-launch` — guided campaign creation, everything PAUSED.
+- **5 project-scoped skills** under `.claude/skills/`:
+  - `/ads-campaign` — scaffold a campaign + ad set(s) PAUSED, persist IDs to `brand/campaigns/<slug>/ids.yaml`.
+  - `/ads-launch` — guided campaign creation, everything PAUSED. Reuses `ids.yaml` if scaffolded.
   - `/ads-report` — performance snapshot (yesterday + last 7d), optional Discord post.
   - `/ads-optimize` — analysis + recommendations, never mutates.
   - `/ads-pause` — bulk pause/resume by pattern, status, or performance threshold.

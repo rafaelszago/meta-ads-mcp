@@ -1,7 +1,7 @@
 ---
 name: ads-launch
 description: Guide the user through launching a new Meta Ads campaign end-to-end (campaign → adset → creative → ad). Defaults everything to PAUSED so the user reviews before going live. Use when the user asks to "launch a campaign", "create a new ad", "set up a Meta Ads campaign", or mentions "/ads-launch".
-allowed-tools: mcp__meta-ads__list_campaigns, mcp__meta-ads__create_campaign, mcp__meta-ads__create_adset, mcp__meta-ads__create_creative, mcp__meta-ads__create_ad, mcp__meta-ads__get_campaign, mcp__meta-ads__get_adset, mcp__meta-ads__get_ad, mcp__meta-ads__sync_brand_assets, Read
+allowed-tools: mcp__meta-ads__list_campaigns, mcp__meta-ads__create_campaign, mcp__meta-ads__create_adset, mcp__meta-ads__create_creative, mcp__meta-ads__create_ad, mcp__meta-ads__get_campaign, mcp__meta-ads__get_adset, mcp__meta-ads__get_ad, mcp__meta-ads__sync_brand_assets, Read, Write, Edit
 ---
 
 # ads-launch — Guided campaign launch
@@ -26,7 +26,14 @@ Before asking the user anything:
 3. If the user invoked the skill with a campaign slug (e.g. `/ads-launch summer-promo`), also read:
    - `brand/campaigns/<slug>/brief.md` — objective, hypothesis, audience overrides, schedule, budget, success metric
    - `brand/campaigns/<slug>/copy.yaml` — destination link and per-variant copy + `image_filename` bindings
+   - `brand/campaigns/<slug>/ids.yaml` — *if it exists*, the campaign and ad sets have already been scaffolded (likely by `/ads-campaign`). Capture `campaign.id`, `adsets[]`, and `account_id`. Validate `account_id` matches `brand.yaml` `account.id` — if not, abort.
    Use these as the launch spec; only ask the user for anything missing.
+
+4. **Reuse vs. create:** if `ids.yaml` was loaded and has a `campaign.id`:
+   - Skip Step 3 / "Campaign" creation in Step 3 below — reuse the existing `campaign.id`.
+   - If `adsets[]` has exactly one entry, reuse it. If multiple, ask the user which ad set to attach the new ads to (show the names).
+   - If `adsets[]` is empty (campaign exists but no ad sets yet), create the ad set as normal and append it to `adsets[]` in `ids.yaml`.
+   Otherwise (no `ids.yaml`), continue with the full create flow.
 
 If `brand/brand.yaml` is absent, fall back to asking every input. Tell the user once that they can run `cp brand/brand.yaml.example brand/brand.yaml` to skip the boilerplate next time.
 
@@ -56,17 +63,34 @@ For each variant in `copy.yaml` (or each image the user provides):
 
 ## Step 3: Create
 
-1. **Campaign** — call `mcp__meta-ads__create_campaign` with a name rendered from `naming_convention.campaign` (tokens: `{brand}`, `{objective}`, `{date}`, falling back to `[goal] - YYYY-MM-DD - vN` if no convention is set), objective, `special_ad_categories: ['NONE']` unless the user indicates otherwise, status `PAUSED`. Capture the returned `id`.
-2. **Ad set** — call `mcp__meta-ads__create_adset` with `campaign_id`, targeting, budget, `billing_event` (usually `IMPRESSIONS`), `optimization_goal` (match the campaign objective: `LINK_CLICKS` for traffic, `OFFSITE_CONVERSIONS` for sales, etc.), status `PAUSED`. Name from `naming_convention.adset`. Capture `id`.
+1. **Campaign** — *skip if reusing `campaign.id` from `ids.yaml`.* Otherwise call `mcp__meta-ads__create_campaign` with a name rendered from `naming_convention.campaign` (tokens: `{brand}`, `{objective}`, `{date}`, falling back to `[goal] - YYYY-MM-DD - vN` if no convention is set), objective, `special_ad_categories: ['NONE']` unless the user indicates otherwise, status `PAUSED`. Capture the returned `id`.
+2. **Ad set** — *skip if reusing an existing ad set from `ids.yaml`.* Otherwise call `mcp__meta-ads__create_adset` with `campaign_id`, targeting, budget, `billing_event` (usually `IMPRESSIONS`), `optimization_goal` (match the campaign objective: `LINK_CLICKS` for traffic, `OFFSITE_CONVERSIONS` for sales, etc.), status `PAUSED`. Name from `naming_convention.adset`. Capture `id`.
 3. **Creative + ad per variant** — for each variant:
    - Build `object_story_spec` with `page_id`, optional `instagram_actor_id`, and `link_data` carrying the variant's `image_hash`, `message`, `name` (headline), `description`, `call_to_action`, and the UTM-augmented `link`.
    - Call `mcp__meta-ads__create_creative`. Capture the creative `id`.
    - Call `mcp__meta-ads__create_ad` with `adset_id`, `creative_id`, name from `naming_convention.ad`, status `PAUSED`.
 
-## Step 4: Summarize
+## Step 4: Persist IDs (if launched from a slug)
+
+If the user invoked `/ads-launch <slug>`, write or update `brand/campaigns/<slug>/ids.yaml` so downstream skills can find the entities by slug. Schema is documented in `docs/brand-workflow.md`; key rules:
+
+- **Create the file** if it didn't exist. Include `slug`, `account_id`, `campaign.{id,name,objective,created_at}`, `adsets[].{id,name,created_at}`, and `ads[].{id,name,creative_id,variant_id,created_at}` populated from this run.
+- **Append to the file** if it existed (this run reused a campaign / ad set from `/ads-campaign`):
+  - Leave `campaign` and existing `adsets[]` entries untouched.
+  - If you created a new ad set this run (because `adsets[]` was empty), append it.
+  - Append each new ad to `ads[]` with `{ id, name, creative_id, variant_id, created_at }`. `variant_id` is the `id` from `copy.yaml` (e.g. `v1`).
+- **IDs are strings** (Meta IDs exceed safe JS integer range). Quote them.
+- **`created_at`** is ISO 8601 UTC at write time.
+- **Append-only.** Never reorder or rewrite existing entries.
+- If `ids.yaml` is malformed or shaped unexpectedly, stop and ask the user — do not silently regenerate.
+
+Skip this step if no slug was provided (one-off `/ads-launch` without a brief).
+
+## Step 5: Summarize
 
 Report:
 - Campaign/adset/ad IDs.
+- If `ids.yaml` was written: confirm the path (`brand/campaigns/<slug>/ids.yaml`).
 - Ads Manager URL: `https://business.facebook.com/adsmanager/manage/campaigns?act=<account id without act_ prefix>&selected_campaign_ids=<campaign_id>`.
 - Reminder that everything is PAUSED — the user flips status to ACTIVE in Ads Manager or via `resume_campaign`/`resume_adset`/`resume_ad`.
 
